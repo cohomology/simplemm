@@ -1,7 +1,6 @@
-extern crate quaint;
-
-use quaint::prelude::ConnectionInfo;
-
 pub struct Config {
-    pub db_info : ConnectionInfo
+    pub db_url : String,
+    pub uid : u32,
+    pub gid : u32,
+    pub pid_file : String,
 }

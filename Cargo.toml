@@ -9,9 +9,5 @@ email-format = "~0.8.0"
 email = "~0.0.21"
 syslog = "^5.0"
 daemonize = "~0.4.1"
-toml = "^0.5"
-
-[dependencies.quaint]
-version = "0.1.13"
-default-features = false 
-features = ["mysql"]
+toml = "~0.5"
+diesel = { version = "~1.4.4", features = ["postgres","mysql"] }
