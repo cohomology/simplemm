@@ -21,7 +21,11 @@ pub enum Error {
     TomlParsingError {
         filename: String,
         source: toml::de::Error
-    }
+    },
+    #[snafu(display("Could not reach database: {}", source))]
+    DbConnectionError {
+        source: diesel::result::ConnectionError
+    } 
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
