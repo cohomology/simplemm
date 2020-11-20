@@ -1,4 +1,14 @@
 table! {
+    inbound_messages (id) {
+        id -> Integer,
+        list_id -> Integer,
+        email -> Varchar,
+        received -> Timestamp,
+        message -> Longtext,
+    }
+}
+
+table! {
     mailing_lists (id) {
         id -> Integer,
         title -> Varchar,
@@ -8,13 +18,21 @@ table! {
 }
 
 table! {
-    messages (id) {
+    outbound_messages (id) {
+        id -> Integer,
+        inbound_id -> Integer,
+        send -> Timestamp,
+        message -> Longtext,
+    }
+}
+
+table! {
+    secrets (id) {
         id -> Integer,
         list_id -> Integer,
         email -> Varchar,
-        received -> Timestamp,
-        message -> Longtext,
-        send -> Nullable<Timestamp>,
+        secret -> Varchar,
+        valid_to -> Timestamp,
     }
 }
 
@@ -24,14 +42,16 @@ table! {
         email -> Varchar,
         password -> Varchar,
         enabled -> Bool,
-        secret -> Varchar,
     }
 }
 
+joinable!(outbound_messages -> inbound_messages (inbound_id));
 joinable!(users -> mailing_lists (list_id));
 
 allow_tables_to_appear_in_same_query!(
+    inbound_messages,
     mailing_lists,
-    messages,
+    outbound_messages,
+    secrets,
     users,
 );
