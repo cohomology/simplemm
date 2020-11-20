@@ -7,10 +7,11 @@ use std::io::{BufReader,Read};
 
 pub fn read_config(program: &str) -> Result<Config> {
   const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-  let matches = App::new(program).version(VERSION).author("Cohomology")
+  let matches = App::new(program).version(VERSION).author("by Cohomology, 2020")
                                  .arg(Arg::with_name("config").short("c")
                                                               .long("config")
                                                               .value_name("FILE")
+                                                              .help("configuration file")
                                                               .takes_value(true))
                                  .get_matches();
   let filename = matches.value_of("config").unwrap_or("/etc/simplemm.conf");
