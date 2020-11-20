@@ -1,4 +1,5 @@
 pub mod types;
+pub mod config;
 
 use std::error::Error;
 

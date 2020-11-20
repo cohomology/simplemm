@@ -1,3 +1,3 @@
 fn main() {
-    println!("I'm using the library: {:?}", simplemm::really_complicated_code(1, 2));
+    let _ = simplemm::config::read_config("simplemmd daemon");
 }
