@@ -481,6 +481,7 @@ dependencies = [
  "diesel",
  "email",
  "email-format",
+ "log",
  "serde",
  "snafu",
  "syslog",
