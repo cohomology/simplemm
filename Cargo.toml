@@ -6,6 +6,7 @@ authors = ["Kilian Kilger <kkilger@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+faccess = "~0.2.3"
 log = "~0.4.11"
 serde = { version = "~1.0.117", features = ["derive"] }
 snafu = { version = "~0.6.9", features = ["backtraces"] }

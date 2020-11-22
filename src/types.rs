@@ -8,6 +8,7 @@ pub struct Config {
     pub gid : u32,
     pub pid_file : String,
     pub working_dir : String,
+    pub socket : String,
 }
 
 #[derive(Debug,Snafu)]
@@ -38,6 +39,24 @@ pub enum Error {
     #[snafu(display("Error when initializing the logging subsystem: {}", source))]
     SetLoggerError {
         source: log::SetLoggerError
+    },
+    #[snafu(display("Error: Path {} not writeable", path))]
+    CouldNotWriteToFileOrDirectory {
+        path : String
+    },
+    #[snafu(display("Error: Path {} is not a file", path))]
+    PathNoFile {
+        path : String
+    },
+    #[snafu(display("Error obtaining path metadata for {}: {}", path, source))]
+    PathMetadataError {
+        path : String,
+        source : std::io::Error
+    },
+    #[snafu(display("Error binding to socket {}: {}", path, source))]
+    SocketBindError {
+        path : String,
+        source : std::io::Error
     }
 }
 

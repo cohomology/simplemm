@@ -261,6 +261,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "faccess"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e039175679baf763ddddf4f76900b92d4dae9411ee88cf42d2f11b976b09e07c"
+dependencies = [
+ "bitflags",
+ "libc",
+ "winapi",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -481,6 +492,7 @@ dependencies = [
  "diesel",
  "email",
  "email-format",
+ "faccess",
  "log",
  "serde",
  "snafu",
