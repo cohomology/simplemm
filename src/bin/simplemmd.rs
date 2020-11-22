@@ -170,4 +170,5 @@ fn exit_handler(program : &'static str) {
         let path = Path::new(&config.pid_file);
         let _ = std::fs::remove_file(&path);
     }
+    std::process::exit(-1)
 }
