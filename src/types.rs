@@ -32,7 +32,7 @@ pub enum Error {
     DaemonizeError {
         source: daemonize::DaemonizeError
     },
-    #[snafu(display("Error connecting to syslog: {}", source))]
+    #[snafu(display("Could not connect to syslog: {}", source))]
     SyslogError {
         source: syslog::Error
     },
@@ -40,11 +40,11 @@ pub enum Error {
     SetLoggerError {
         source: log::SetLoggerError
     },
-    #[snafu(display("Error: Path {} not writeable", path))]
+    #[snafu(display("Path {} not writeable", path))]
     CouldNotWriteToFileOrDirectory {
         path : String
     },
-    #[snafu(display("Error: Path {} is not a file", path))]
+    #[snafu(display("Path {} is not a file", path))]
     PathNoFile {
         path : String
     },
@@ -53,10 +53,14 @@ pub enum Error {
         path : String,
         source : std::io::Error
     },
-    #[snafu(display("Error binding to socket {}: {}", path, source))]
+    #[snafu(display("Could not bind to socket {}: {}", path, source))]
     SocketBindError {
         path : String,
         source : std::io::Error
+    },
+    #[snafu(display("Could not bind exit handler: {}", source))]
+    ExitHandlerError {
+        source : ctrlc::Error
     }
 }
 

@@ -1,15 +1,18 @@
 #[macro_use]
 extern crate log;
 
-use snafu::{ErrorCompat, ResultExt};
 use simplemm::types::*;
+
+use snafu::{ErrorCompat, ResultExt};
 use syslog::{Facility, Formatter3164, BasicLogger};
 use log::LevelFilter;
 use daemonize::Daemonize;
 use faccess::{AccessMode, PathExt};
 use std::path::{Path, PathBuf};
 use std::thread;
-use std::os::unix::net::{UnixStream,UnixListener};
+use std::os::unix::net::{UnixListener, UnixStream};
+
+static PROGRAM: &str = "simplemmd daemon";
 
 fn main() {
     if let Err(e) = run() {
@@ -19,7 +22,7 @@ fn main() {
 
 fn run() -> Result<()> {
     initialize_syslog()?;  
-    let config = simplemm::config::read_config("simplemmd daemon")?;
+    let config = simplemm::config::read_config(PROGRAM)?;
     pre_daemonize_checks(&config)?;
     daemonize(&config)?;
     bind_to_socket(&config)
@@ -95,13 +98,17 @@ fn daemonize(config : &Config) -> Result<()> {
 
     daemonize.start().context(DaemonizeError {})?;
     log_start(&config);
+    set_exit_handler()?;
     Ok(())
 }
 
 fn bind_to_socket(config : &Config) -> Result<()> {
-    let listener = UnixListener::bind(&config.socket).context(
-        SocketBindError { path : &config.socket }
-    )?;
+    let path = Path::new(&config.socket);
+    let _ = std::fs::remove_file(&path);
+    let listener = UnixListener::bind(&path).context(SocketBindError { 
+            path : path.to_string_lossy().to_string() 
+    })?;
+
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
@@ -109,6 +116,7 @@ fn bind_to_socket(config : &Config) -> Result<()> {
             }
             Err(err) => {
                 error!("Error: {}", err);
+                eprintln!("Error: {}", err);
                 break;
             }
         }
@@ -123,7 +131,7 @@ fn initialize_syslog() -> Result<()> {
     let formatter = Formatter3164 {
         facility: Facility::LOG_USER,
         hostname: None,
-        process: "myprogram".into(),
+        process: "simplemmd".into(),
         pid: 0,
     };
 
@@ -145,4 +153,21 @@ fn error_abort(error : Error) -> ! {
         eprintln!("{}", backtrace);
     }
     std::process::exit(-1)
+}
+
+fn set_exit_handler() -> Result<()> {
+    ctrlc::set_handler(move || {
+        exit_handler(PROGRAM)
+    }).context(ExitHandlerError {})?;
+    Ok(())
+}
+
+fn exit_handler(program : &'static str) {
+    let config = simplemm::config::read_config(program);
+    if let Ok(config) = config {
+        let path = Path::new(&config.socket);
+        let _ = std::fs::remove_file(&path);
+        let path = Path::new(&config.pid_file);
+        let _ = std::fs::remove_file(&path);
+    }
 }
