@@ -1,5 +1,5 @@
 use simplemm::types::*;
-use snafu::{ErrorCompat, ResultExt};
+use snafu::ErrorCompat;
 
 fn main() {
     if let Err(e) = run() {

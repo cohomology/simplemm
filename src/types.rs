@@ -1,7 +1,7 @@
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 use snafu::Snafu;
 
-#[derive(Deserialize)]
+#[derive(Serialize,Deserialize)]
 pub struct Config {
     pub db_url : String,
     pub uid : u32,
@@ -9,6 +9,21 @@ pub struct Config {
     pub pid_file : String,
     pub working_dir : String,
     pub socket : String,
+}
+
+#[derive(Serialize,Deserialize)]
+pub enum Action {
+    Stop,
+    Subscribe,
+    Unsubscribe,
+    Send
+}
+
+#[derive(Serialize,Deserialize)]
+pub struct Command {
+    pub action : Action,
+    pub originator : String,
+    pub data : String,
 }
 
 #[derive(Debug,Snafu)]
@@ -61,6 +76,10 @@ pub enum Error {
     #[snafu(display("Could not bind exit handler: {}", source))]
     ExitHandlerError {
         source : ctrlc::Error
+    },
+    #[snafu(display("Could not parse request: {}", source))]
+    RequestParseError {
+        source : serde_json::Error
     }
 }
 

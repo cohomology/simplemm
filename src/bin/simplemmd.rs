@@ -10,6 +10,7 @@ use daemonize::Daemonize;
 use std::thread;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
+use std::io::BufReader;
 
 static PROGRAM: &str = "simplemmd daemon";
 
@@ -70,8 +71,14 @@ fn bind_to_socket(config : &Config) -> Result<()> {
     Ok(())
 }
 
-fn handle_client(_stream: UnixStream) {
-
+fn handle_client(stream: UnixStream) {
+    let reader = BufReader::new(stream);
+    let action: Result<Action> = 
+        serde_json::from_reader(reader).context(RequestParseError {});
+    match action {
+        Ok(action) => simplemm::request::process_request(action),
+        Err(err) => warn!("Could not parse request: {:?}", err)
+    }
 }
 
 fn initialize_syslog() -> Result<()> {
