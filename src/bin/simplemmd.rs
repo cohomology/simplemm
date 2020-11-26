@@ -13,14 +13,13 @@ use std::thread;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
 use std::io::BufReader;
-use std::sync::mpsc::{Sender, Receiver, channel};
-use std::sync::Mutex;
-use clap::{Arg,ArgMatches,App};
+use std::sync::{Mutex,Arc};
+use clap::{Arg,App};
 
 static PROGRAM: &str = "simplemmd daemon";
 
 lazy_static! {
-    static ref CONFIG_FILE: Mutex<String> = Mutex::new(String::new());
+    static ref CONFIG: Mutex<Option<Config>> = Mutex::new(None);
 }
 
 fn main() {
@@ -40,15 +39,15 @@ fn run() -> Result<()> {
 fn read_config<'a>() -> Result<Config> {
     let arg_matches = parse_args();
     let config_file_name = arg_matches.value_of("config").unwrap_or("/etc/simplemm.conf");
-    let config = simplemm::config::read_config(config_file_name);
-    let config_file = CONFIG_FILE.lock()?;
-    config_file = config_file_name;
+    let config = simplemm::config::read_config(config_file_name)?;
+    let mut stored_config = CONFIG.lock().unwrap();
+    *stored_config = Some(config.clone());
     Ok(config)
 }
 
 fn parse_args<'a>() -> clap::ArgMatches<'a> {
   const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-  let matches = clap::App::new(PROGRAM).version(VERSION).author("by Cohomology, 2020")
+  let matches = App::new(PROGRAM).version(VERSION).author("by Cohomology, 2020")
                              .arg(Arg::with_name("config").short("c")
                                                           .long("config")
                                                           .value_name("FILE")
@@ -81,39 +80,35 @@ fn daemonize(config : &Config) -> Result<()> {
 }
 
 fn bind_to_socket(config : &Config) -> Result<()> {
-    type MpscTuple = (Sender<DaemonCommands>, Receiver<DaemonCommands>);
     let path = Path::new(&config.socket);
     let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).context(SocketBindError { 
             path : path.to_string_lossy().to_string() 
     })?;
 
-    let (tx, rx) : MpscTuple = channel();
+    let quit_fn : QuitFn = Arc::new(Mutex::new(quit));
 
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                let sender = tx.clone();
-                thread::spawn(move || handle_client(sender, stream));
+                let cloned_quit = quit_fn.clone();
+                thread::spawn(move || handle_client(stream, cloned_quit));
             }
             Err(err) => {
                 error!("Error: {}", err);
                 break;
             }
         }
-        if let Ok(DaemonCommands::StopDaemon) = rx.try_recv() {
-            break;
-        }
     }
     Ok(())
 }
 
-fn handle_client(sender : Sender<DaemonCommands>, stream: UnixStream) {
+fn handle_client(stream: UnixStream, quit_fn : QuitFn) {
     let reader = BufReader::new(stream);
     let command: Result<Command> = 
         serde_json::from_reader(reader).context(RequestParseError {});
     match command {
-        Ok(command) => simplemm::request::process_request(sender, command),
+        Ok(command) => simplemm::request::process_request(command, quit_fn),
         Err(err) => warn!("Could not parse request: {:?}", err)
     }
 }
@@ -136,12 +131,8 @@ fn log_start(config: &Config) {
     info!("simplemmd started, uid = {}, gid = {}", config.uid, config.gid);
 }
 
-fn log_end(config: &Result<Config>) {
-    if let Ok(config) = config {
-        info!("simplemmd stopped, uid = {}, gid = {}", config.uid, config.gid);
-    } else {
-        info!("simplemmd stopped");
-    }
+fn log_end(config: &Config) {
+    info!("simplemmd stopped, uid = {}, gid = {}", config.uid, config.gid);
 }
 
 fn error_abort(error : Error) -> ! {
@@ -156,22 +147,27 @@ fn error_abort(error : Error) -> ! {
 
 fn set_exit_handler() -> Result<()> {
     ctrlc::set_handler(move || {
-        exit_handler()
+        quit()
     }).context(ExitHandlerError {})?;
     Ok(())
 }
 
-fn exit_handler() -> ! {
-    let config = read_config();
-    if let Ok(ref config) = config {
-        delete_file(&config.socket);
-        delete_file(&config.pid_file);
+fn destroy_config() -> Option<Config> {
+    let stored_config = CONFIG.lock();
+    if let Ok(mut stored_config) = stored_config {
+        let config = stored_config.clone();
+        *stored_config = None;
+        return config;
     }
-    log_end(&config);
-    std::process::exit(-1)
+    None
 }
 
-fn delete_file(file_path : &str) {
-    let path = Path::new(&file_path);
-    let _ = std::fs::remove_file(&path);
+fn quit() {
+    let config = destroy_config();
+    if let Some(ref config) = config {
+        simplemm::file::delete_file(&config.socket);
+        simplemm::file::delete_file(&config.pid_file);
+        log_end(config);
+    }
+    std::process::exit(-1);
 }

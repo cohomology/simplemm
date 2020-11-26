@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 use snafu::Snafu;
 
-#[derive(Serialize,Deserialize)]
+#[derive(Clone,Serialize,Deserialize)]
 pub struct Config {
     pub db_url : String,
     pub uid : u32,
@@ -21,11 +21,6 @@ pub struct Command {
     pub action : Action,
     pub originator : String,
     pub data : String,
-}
-
-#[derive(Serialize,Deserialize)]
-pub enum DaemonCommands {
-    StopDaemon
 }
 
 #[derive(Debug,Snafu)]
@@ -86,3 +81,4 @@ pub enum Error {
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
+pub type QuitFn = std::sync::Arc<std::sync::Mutex<dyn Fn() + Send + 'static>>;

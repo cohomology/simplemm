@@ -15,6 +15,10 @@ pub fn check_pid_file(config: &Config) -> Result<()> {
     Ok(())
 }
 
+pub fn delete_file(file_path : &str) {
+    let path = Path::new(&file_path);
+    let _ = std::fs::remove_file(&path);
+}
 
 fn check_writeable_file(path: &Path) -> Result<()> {
     if path.exists() {

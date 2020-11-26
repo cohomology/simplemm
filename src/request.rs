@@ -1,15 +1,16 @@
-use crate::types::{Action, Command, DaemonCommands};
-use std::sync::mpsc::Sender;
+use crate::types::{Action, Command, QuitFn};
 
-pub fn process_request(sender : Sender<DaemonCommands>,
-                       command: Command) {
+pub fn process_request(command: Command,
+                       quit : QuitFn) {
     match command.action {
-       Action::Stop => process_stop(sender)
+       Action::Stop => process_stop(quit)
     }
 }
 
-fn process_stop(sender : Sender<DaemonCommands>) {
-    if let Err(err) = sender.send(DaemonCommands::StopDaemon) {
-        warn!("Could not stop daemon: {:?}", err);
+fn process_stop(quit : QuitFn) {
+    let func = quit.lock();
+    match func {
+        Ok(func) => func(),
+        Err(err) => error!("Could not quit. Error in exit handler {:?}", err)
     }
 }
