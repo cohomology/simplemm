@@ -1,20 +1,10 @@
 use snafu::ResultExt;
 
 use crate::types::{Config, Result, FileOpenError, TomlParsingError};
-use clap::{Arg, App};
 use std::fs::File;
 use std::io::{BufReader,Read};
 
-pub fn read_config(program: &str) -> Result<Config> {
-  const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-  let matches = App::new(program).version(VERSION).author("by Cohomology, 2020")
-                                 .arg(Arg::with_name("config").short("c")
-                                                              .long("config")
-                                                              .value_name("FILE")
-                                                              .help("configuration file")
-                                                              .takes_value(true))
-                                 .get_matches();
-  let filename = matches.value_of("config").unwrap_or("/etc/simplemm.conf");
+pub fn read_config(filename: &str) -> Result<Config> {
   let file = File::open(filename).context(FileOpenError { filename })?;
   let mut buf_reader = BufReader::new(file);
   let mut contents = String::new();

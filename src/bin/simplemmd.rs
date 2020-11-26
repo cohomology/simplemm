@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate lazy_static;
 
 use simplemm::types::*;
 
@@ -11,8 +13,15 @@ use std::thread;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
 use std::io::BufReader;
+use std::sync::mpsc::{Sender, Receiver, channel};
+use std::sync::Mutex;
+use clap::{Arg,ArgMatches,App};
 
 static PROGRAM: &str = "simplemmd daemon";
+
+lazy_static! {
+    static ref CONFIG_FILE: Mutex<String> = Mutex::new(String::new());
+}
 
 fn main() {
     if let Err(e) = run() {
@@ -22,11 +31,32 @@ fn main() {
 
 fn run() -> Result<()> {
     initialize_syslog()?;  
-    let config = simplemm::config::read_config(PROGRAM)?;
+    let config = read_config()?;
     pre_daemonize_checks(&config)?;
     daemonize(&config)?;
     bind_to_socket(&config)
 } 
+
+fn read_config<'a>() -> Result<Config> {
+    let arg_matches = parse_args();
+    let config_file_name = arg_matches.value_of("config").unwrap_or("/etc/simplemm.conf");
+    let config = simplemm::config::read_config(config_file_name);
+    let config_file = CONFIG_FILE.lock()?;
+    config_file = config_file_name;
+    Ok(config)
+}
+
+fn parse_args<'a>() -> clap::ArgMatches<'a> {
+  const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+  let matches = clap::App::new(PROGRAM).version(VERSION).author("by Cohomology, 2020")
+                             .arg(Arg::with_name("config").short("c")
+                                                          .long("config")
+                                                          .value_name("FILE")
+                                                          .help("configuration file")
+                                                          .takes_value(true))
+                             .get_matches();
+  return matches;
+}
 
 fn pre_daemonize_checks(config :&Config) -> Result<()> {
     simplemm::database::check_database(&config)?; 
@@ -51,32 +81,39 @@ fn daemonize(config : &Config) -> Result<()> {
 }
 
 fn bind_to_socket(config : &Config) -> Result<()> {
+    type MpscTuple = (Sender<DaemonCommands>, Receiver<DaemonCommands>);
     let path = Path::new(&config.socket);
     let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).context(SocketBindError { 
             path : path.to_string_lossy().to_string() 
     })?;
 
+    let (tx, rx) : MpscTuple = channel();
+
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                thread::spawn(|| handle_client(stream));
+                let sender = tx.clone();
+                thread::spawn(move || handle_client(sender, stream));
             }
             Err(err) => {
                 error!("Error: {}", err);
                 break;
             }
         }
+        if let Ok(DaemonCommands::StopDaemon) = rx.try_recv() {
+            break;
+        }
     }
     Ok(())
 }
 
-fn handle_client(stream: UnixStream) {
+fn handle_client(sender : Sender<DaemonCommands>, stream: UnixStream) {
     let reader = BufReader::new(stream);
-    let action: Result<Action> = 
+    let command: Result<Command> = 
         serde_json::from_reader(reader).context(RequestParseError {});
-    match action {
-        Ok(action) => simplemm::request::process_request(action),
+    match command {
+        Ok(command) => simplemm::request::process_request(sender, command),
         Err(err) => warn!("Could not parse request: {:?}", err)
     }
 }
@@ -119,13 +156,13 @@ fn error_abort(error : Error) -> ! {
 
 fn set_exit_handler() -> Result<()> {
     ctrlc::set_handler(move || {
-        exit_handler(PROGRAM)
+        exit_handler()
     }).context(ExitHandlerError {})?;
     Ok(())
 }
 
-fn exit_handler(program : &'static str) -> ! {
-    let config = simplemm::config::read_config(program);
+fn exit_handler() -> ! {
+    let config = read_config();
     if let Ok(ref config) = config {
         delete_file(&config.socket);
         delete_file(&config.pid_file);

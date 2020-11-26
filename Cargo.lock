@@ -545,6 +545,7 @@ dependencies = [
  "email",
  "email-format",
  "faccess",
+ "lazy_static",
  "log",
  "serde",
  "serde_json",

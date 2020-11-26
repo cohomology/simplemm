@@ -13,10 +13,7 @@ pub struct Config {
 
 #[derive(Serialize,Deserialize)]
 pub enum Action {
-    Stop,
-    Subscribe,
-    Unsubscribe,
-    Send
+    Stop
 }
 
 #[derive(Serialize,Deserialize)]
@@ -24,6 +21,11 @@ pub struct Command {
     pub action : Action,
     pub originator : String,
     pub data : String,
+}
+
+#[derive(Serialize,Deserialize)]
+pub enum DaemonCommands {
+    StopDaemon
 }
 
 #[derive(Debug,Snafu)]
