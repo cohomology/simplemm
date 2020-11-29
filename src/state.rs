@@ -2,7 +2,7 @@ use crate::types::*;
 use crate::file::delete_file;
 use std::sync::RwLock;
 use snafu::ResultExt;
-use chrono::{DateTime, Utc};  
+use chrono::Utc; 
 
 lazy_static! {
     static ref STATE: RwLock<Option<DaemonState>> = RwLock::new(None);

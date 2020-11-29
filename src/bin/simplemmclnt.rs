@@ -1,8 +1,12 @@
 use simplemm::types::*;
-use snafu::ErrorCompat;
+use snafu::{ErrorCompat, ResultExt};
 use clap::{Arg,App};
+use std::fs::File;
+use std::io::Read;
+use std::os::unix::net::UnixStream; 
 
-static PROGRAM: &str = "simplemm client";
+static PROGRAM: &'static str = "simplemm client";
+static VERSION: &'static str = env!("CARGO_PKG_VERSION"); 
 
 fn main() {
     if let Err(e) = run() {
@@ -12,17 +16,14 @@ fn main() {
 
 fn run() -> Result<()> {
     let (config, matches) = read_config()?;
+    let (pid, state) = check_server_is_running(&config)?;
     match matches.subcommand_name().unwrap() {
-        "stop" => stop_daemon(),
-        _      => ()
-    };
-    Ok(())
+        "stop" => stop_daemon(&config),
+        "ping" => Ok(print_server_state(pid, &state)),
+        "version" => Ok(print_client_info()),
+        _      => Ok(())
+    }
 }
-
-fn stop_daemon() {
-
-}
-
 
 fn error_abort(error : Error) -> ! {
     eprintln!("Error: {}", error); 
@@ -33,7 +34,6 @@ fn error_abort(error : Error) -> ! {
 }
 
 fn parse_args<'a>() -> clap::ArgMatches<'a> {
-    const VERSION: &'static str = env!("CARGO_PKG_VERSION");
     let app = App::new(PROGRAM).version(VERSION).author("by Cohomology, 2020")
         .setting(clap::AppSettings::SubcommandRequiredElseHelp)
         .arg(Arg::with_name("config").short("c")
@@ -41,7 +41,9 @@ fn parse_args<'a>() -> clap::ArgMatches<'a> {
              .value_name("FILE")
              .help("configuration file")
              .takes_value(true))
-        .subcommand(clap::SubCommand::with_name("stop").about("Stop simplemmd daemon"));
+        .subcommand(clap::SubCommand::with_name("stop").about("Stop simplemmd daemon"))
+        .subcommand(clap::SubCommand::with_name("ping").about("Get server status"))
+        .subcommand(clap::SubCommand::with_name("version").about("Get client version")); 
     let matches = app.get_matches();
     return matches;
 }
@@ -51,4 +53,96 @@ fn read_config<'a>() -> Result<(Config, clap::ArgMatches<'a>)> {
     let config_file_name = arg_matches.value_of("config").unwrap_or("/etc/simplemm.conf");
     let config = simplemm::config::read_config(config_file_name)?;
     Ok((config, arg_matches))
+}
+
+fn check_pid_file_exists(config: &Config) -> Result<i64> {
+    let mut file = File::open(&config.pid_file).context(
+        PidFileReadError { 
+            filename : &config.pid_file
+    })?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).context(
+        PidFileReadError {
+            filename : &config.pid_file
+    })?;
+    let pid : i64 = contents.trim().parse().context(
+        PidFileParseError {
+            filename : &config.pid_file
+    })?;  
+    Ok(pid)
+}
+
+fn check_server_is_running(config: &Config) -> Result<(i64, DaemonState)> {
+    let pid = check_pid_file_exists(config)?;
+    let state = get_server_state(&config)?;
+    Ok((pid, state))
+}
+
+fn get_server_state(config: &Config) -> Result<DaemonState> {
+    send_and_read(config, Action::Alive, None)
+}
+
+fn stop_daemon(config: &Config) -> Result<()> {
+    send_no_read(config, Action::Stop, None)?;
+    let state = get_server_state(config);
+    if let Err(_) = state {
+        println!("Server stopped successfully");
+    } else {
+        println!("Could not stop server");
+    }
+    Ok(())
+}
+
+fn send_and_read<T: for<'de> serde::de::Deserialize<'de>>(config: &Config, action: Action, data: Option<String>) -> Result<T> {
+    let stream = send(config, action, data)?;
+    let result: T = serde_json::from_reader(&stream).context(RequestParseError {})?;
+    stream.shutdown(std::net::Shutdown::Both).context(
+        SocketCloseError { 
+            socket : &config.socket
+        }
+    )?; 
+    Ok(result) 
+}
+
+fn send_no_read(config: &Config, action: Action, data: Option<String>) -> Result<()> {
+    let stream = send(config, action, data)?;
+    stream.shutdown(std::net::Shutdown::Both).context(
+        SocketCloseError { 
+            socket : &config.socket
+        }
+    )?;  
+    Ok(())
+}
+
+fn send(config: &Config, action: Action, data: Option<String>) -> Result<UnixStream> {
+    let stream = UnixStream::connect(&config.socket).context(
+        SocketConnectError {
+            socket : &config.socket
+        }
+    )?;
+    
+    let uid = users::get_current_uid();
+    let user = users::get_user_by_uid(uid).map_or("<None>".to_string(), 
+                                                  |user| user.name().to_string_lossy().to_string());
+    let command = Command {
+        action: action,
+        originator: user,
+        data: data,
+    }; 
+    serde_json::to_writer(&stream, &command).context(RequestSerializeError { })?;
+    stream.shutdown(std::net::Shutdown::Write).context(
+        SocketShutdownWriteError { 
+            socket : &config.socket
+        }
+    )?;
+    Ok(stream)
+}
+
+fn print_server_state(pid: i64, state: &DaemonState) {
+    println!("Server is running, pid = {}, server_start_time: {}", pid, state.start_time);
+}
+
+fn print_client_info() {
+    println!("{}, v{}", PROGRAM, VERSION);
+
 }

@@ -22,7 +22,8 @@ fn signal_alive(stream: UnixStream) {
 }
 
 fn send_signal_alive(stream: UnixStream, state: &DaemonState) {
-    if let Err(err) = serde_json::to_writer(stream, state) {
+    if let Err(err) = serde_json::to_writer(&stream, state) {
         error!("Error serializing the server state: {:?}", err); 
     }
+    let _ = stream.shutdown(std::net::Shutdown::Both);
 }

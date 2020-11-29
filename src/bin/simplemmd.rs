@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate lazy_static;
 
 use simplemm::types::*;
 
@@ -13,7 +11,6 @@ use std::thread;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
 use std::io::BufReader;
-use std::sync::{Mutex,Arc};
 use clap::{Arg,App};
 
 static PROGRAM: &str = "simplemmd daemon";
@@ -28,8 +25,9 @@ fn run() -> Result<()> {
     initialize_syslog()?;  
     let config = read_config()?;
     pre_daemonize_checks(&config)?;
+    let socket = bind_to_socket(&config)?;
     daemonize(&config)?;
-    bind_to_socket(&config)
+    Ok(handle_requests(socket))
 } 
 
 fn read_config<'a>() -> Result<Config> {
@@ -72,13 +70,17 @@ fn daemonize(config : &Config) -> Result<()> {
     Ok(())
 }
 
-fn bind_to_socket(config : &Config) -> Result<()> {
+fn bind_to_socket(config : &Config) -> Result<UnixListener> {
     let path = Path::new(&config.socket);
     let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).context(SocketBindError { 
             path : path.to_string_lossy().to_string() 
     })?;
+    set_socket_permissions(&config.socket)?;
+    Ok(listener)
+}
 
+fn handle_requests(listener: UnixListener) {
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
@@ -89,8 +91,7 @@ fn bind_to_socket(config : &Config) -> Result<()> {
                 break;
             }
         }
-    }
-    Ok(())
+    } 
 }
 
 fn handle_client(stream: UnixStream) {
@@ -125,4 +126,11 @@ fn error_abort(error : Error) -> ! {
         eprintln!("{}", backtrace);
     }
     std::process::exit(-1)
+}
+
+fn set_socket_permissions(socket : &str) -> Result<()> {
+     // Fixme: seems to be the only working way to change the socket permissions
+     std::process::Command::new("/usr/bin/env").arg("chmod").arg("777").arg(socket).output()
+         .context(SocketPermissionError { socket })?;
+     Ok(())
 }

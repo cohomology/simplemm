@@ -5,12 +5,12 @@ use chrono::{DateTime, Utc};
 #[derive(Debug,Snafu)]
 #[snafu(visibility(pub))]
 pub enum Error {
-    #[snafu(display("Could not open config from {}: {}", filename, source))]
+    #[snafu(display("Could not open config file \"{}\": {}", filename, source))]
     FileOpenError {
         filename: String,
         source: std::io::Error
     },
-    #[snafu(display("Could not parse configuration file {}: {}", filename, source))]
+    #[snafu(display("Could not parse configuration file \"{}\": {}", filename, source))]
     TomlParsingError {
         filename: String,
         source: toml::de::Error
@@ -19,7 +19,7 @@ pub enum Error {
     DbConnectionError {
         source: diesel::result::ConnectionError
     },
-    #[snafu(display("Could not daemonize: {}", source))]
+    #[snafu(display("Could not daemonize: {}. Server already running?", source))]
     DaemonizeError {
         source: daemonize::DaemonizeError
     },
@@ -31,7 +31,7 @@ pub enum Error {
     SetLoggerError {
         source: log::SetLoggerError
     },
-    #[snafu(display("Path {} not writeable", path))]
+    #[snafu(display("Path \"{}\" not writeable. Permission error?", path))]
     CouldNotWriteToFileOrDirectory {
         path : String
     },
@@ -57,10 +57,44 @@ pub enum Error {
     RequestParseError {
         source : serde_json::Error
     },
+    #[snafu(display("Could not serialize request: {}", source))]
+    RequestSerializeError {
+        source : serde_json::Error
+    }, 
     #[snafu(display("Could not read/write server state: {}", source))]
     ServerStateError {
         source : Box<dyn std::error::Error>
     }, 
+    #[snafu(display("Could not read pid file \"{}\": {}. Server not running?", filename, source))]
+    PidFileReadError {
+        filename : String, 
+        source : std::io::Error
+    },  
+    #[snafu(display("Could not parse pid file \"{}\": {}. Server not running?", filename, source))]
+    PidFileParseError {
+        filename : String,
+        source : std::num::ParseIntError
+    },   
+    #[snafu(display("Could not connect to socket {}: {}. Server not running?", socket, source))]
+    SocketConnectError {
+        socket : String,
+        source : std::io::Error
+    },    
+    #[snafu(display("Could not change permissions of socket {}: {}", socket, source))]
+    SocketPermissionError {
+        socket : String,
+        source : std::io::Error
+    },     
+    #[snafu(display("Could not read from socket {}: {}", socket, source))]
+    SocketShutdownWriteError {
+        socket : String,
+        source : std::io::Error
+    },      
+    #[snafu(display("Could not close socket {}: {}", socket, source))]
+    SocketCloseError {
+        socket : String,
+        source : std::io::Error
+    },       
 }
  
 #[derive(Clone,Serialize,Deserialize)]
@@ -83,7 +117,7 @@ pub enum Action {
 pub struct Command {
     pub action : Action,
     pub originator : String,
-    pub data : String,
+    pub data : Option<String>,
 }
 
 #[derive(Clone,Serialize,Deserialize)] 
