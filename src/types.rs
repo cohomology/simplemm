@@ -78,8 +78,11 @@ pub enum Error {
     #[snafu(display("Could not parse request: {}", source))]
     RequestParseError {
         source : serde_json::Error
-    }
+    },
+    #[snafu(display("Could not initialize server state: {}", source))]
+    ServerStateError {
+        source : Box<dyn std::error::Error>
+    }, 
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
-pub type QuitFn = std::sync::Arc<std::sync::Mutex<dyn Fn() + Send + 'static>>;

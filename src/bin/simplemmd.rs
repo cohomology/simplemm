@@ -74,8 +74,7 @@ fn daemonize(config : &Config) -> Result<()> {
         .umask(0o777);
 
     daemonize.start().context(DaemonizeError {})?;
-    set_exit_handler()?;
-    log_start(&config);
+    simplemm::state::start_server(&config);
     Ok(())
 }
 
@@ -86,13 +85,10 @@ fn bind_to_socket(config : &Config) -> Result<()> {
             path : path.to_string_lossy().to_string() 
     })?;
 
-    let quit_fn : QuitFn = Arc::new(Mutex::new(quit));
-
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                let cloned_quit = quit_fn.clone();
-                thread::spawn(move || handle_client(stream, cloned_quit));
+                thread::spawn(move || handle_client(stream));
             }
             Err(err) => {
                 error!("Error: {}", err);
@@ -103,12 +99,12 @@ fn bind_to_socket(config : &Config) -> Result<()> {
     Ok(())
 }
 
-fn handle_client(stream: UnixStream, quit_fn : QuitFn) {
+fn handle_client(stream: UnixStream) {
     let reader = BufReader::new(stream);
     let command: Result<Command> = 
         serde_json::from_reader(reader).context(RequestParseError {});
     match command {
-        Ok(command) => simplemm::request::process_request(command, quit_fn),
+        Ok(command) => simplemm::request::process_request(command),
         Err(err) => warn!("Could not parse request: {:?}", err)
     }
 }
@@ -127,14 +123,6 @@ fn initialize_syslog() -> Result<()> {
     Ok(())
 }
 
-fn log_start(config: &Config) {
-    info!("simplemmd started, uid = {}, gid = {}", config.uid, config.gid);
-}
-
-fn log_end(config: &Config) {
-    info!("simplemmd stopped, uid = {}, gid = {}", config.uid, config.gid);
-}
-
 fn error_abort(error : Error) -> ! {
     error!("Error: {}", error);
     eprintln!("Error: {}", error); 
@@ -143,31 +131,4 @@ fn error_abort(error : Error) -> ! {
         eprintln!("{}", backtrace);
     }
     std::process::exit(-1)
-}
-
-fn set_exit_handler() -> Result<()> {
-    ctrlc::set_handler(move || {
-        quit()
-    }).context(ExitHandlerError {})?;
-    Ok(())
-}
-
-fn destroy_config() -> Option<Config> {
-    let stored_config = CONFIG.lock();
-    if let Ok(mut stored_config) = stored_config {
-        let config = stored_config.clone();
-        *stored_config = None;
-        return config;
-    }
-    None
-}
-
-fn quit() {
-    let config = destroy_config();
-    if let Some(ref config) = config {
-        simplemm::file::delete_file(&config.socket);
-        simplemm::file::delete_file(&config.pid_file);
-        log_end(config);
-    }
-    std::process::exit(-1);
 }

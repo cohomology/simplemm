@@ -1,18 +1,10 @@
-use crate::types::{Action, Command, QuitFn};
+use crate::types::{Action, Command};
+use crate::state::stop_server;
 
-pub fn process_request(command: Command,
-                       quit : QuitFn) {
+pub fn process_request(command: Command) {
     match command.action {
-       Action::Stop => process_stop(quit),
+       Action::Stop => stop_server(),
        Action::Alive => signal_alive()
-    }
-}
-
-fn process_stop(quit : QuitFn) {
-    let func = quit.lock();
-    match func {
-        Ok(func) => func(),
-        Err(err) => error!("Could not quit. Error in exit handler {:?}", err)
     }
 }
 
