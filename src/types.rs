@@ -1,28 +1,6 @@
 use serde::{Serialize, Deserialize};
 use snafu::Snafu;
-
-#[derive(Clone,Serialize,Deserialize)]
-pub struct Config {
-    pub db_url : String,
-    pub uid : u32,
-    pub gid : u32,
-    pub pid_file : String,
-    pub working_dir : String,
-    pub socket : String,
-}
-
-#[derive(Serialize,Deserialize)]
-pub enum Action {
-    Stop,
-    Alive
-}
-
-#[derive(Serialize,Deserialize)]
-pub struct Command {
-    pub action : Action,
-    pub originator : String,
-    pub data : String,
-}
+use chrono::{DateTime, Utc}; 
 
 #[derive(Debug,Snafu)]
 #[snafu(visibility(pub))]
@@ -79,10 +57,48 @@ pub enum Error {
     RequestParseError {
         source : serde_json::Error
     },
-    #[snafu(display("Could not initialize server state: {}", source))]
+    #[snafu(display("Could not read/write server state: {}", source))]
     ServerStateError {
         source : Box<dyn std::error::Error>
     }, 
 }
+ 
+#[derive(Clone,Serialize,Deserialize)]
+pub struct Config {
+    pub db_url : String,
+    pub uid : u32,
+    pub gid : u32,
+    pub pid_file : String,
+    pub working_dir : String,
+    pub socket : String,
+}
+
+#[derive(Serialize,Deserialize)]
+pub enum Action {
+    Stop,
+    Alive
+}
+
+#[derive(Serialize,Deserialize)]
+pub struct Command {
+    pub action : Action,
+    pub originator : String,
+    pub data : String,
+}
+
+#[derive(Clone,Serialize,Deserialize)] 
+pub struct DaemonState {
+    pub config : Config,
+    pub start_time : DateTime<Utc>
+} 
+
+impl DaemonState {
+    pub fn new(config: &Config, start_time : &DateTime<Utc>) -> DaemonState {
+        DaemonState {
+            config : config.clone(),
+            start_time : start_time.clone()
+        }
+    }
+} 
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

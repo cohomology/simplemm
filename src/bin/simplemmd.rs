@@ -18,10 +18,6 @@ use clap::{Arg,App};
 
 static PROGRAM: &str = "simplemmd daemon";
 
-lazy_static! {
-    static ref CONFIG: Mutex<Option<Config>> = Mutex::new(None);
-}
-
 fn main() {
     if let Err(e) = run() {
        error_abort(e)
@@ -40,8 +36,6 @@ fn read_config<'a>() -> Result<Config> {
     let arg_matches = parse_args();
     let config_file_name = arg_matches.value_of("config").unwrap_or("/etc/simplemm.conf");
     let config = simplemm::config::read_config(config_file_name)?;
-    let mut stored_config = CONFIG.lock().unwrap();
-    *stored_config = Some(config.clone());
     Ok(config)
 }
 
@@ -74,7 +68,7 @@ fn daemonize(config : &Config) -> Result<()> {
         .umask(0o777);
 
     daemonize.start().context(DaemonizeError {})?;
-    simplemm::state::start_server(&config);
+    simplemm::state::start_server(&config)?;
     Ok(())
 }
 
@@ -100,11 +94,11 @@ fn bind_to_socket(config : &Config) -> Result<()> {
 }
 
 fn handle_client(stream: UnixStream) {
-    let reader = BufReader::new(stream);
+    let reader = BufReader::new(&stream);
     let command: Result<Command> = 
         serde_json::from_reader(reader).context(RequestParseError {});
     match command {
-        Ok(command) => simplemm::request::process_request(command),
+        Ok(command) => simplemm::request::process_request(command, stream),
         Err(err) => warn!("Could not parse request: {:?}", err)
     }
 }

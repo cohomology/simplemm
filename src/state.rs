@@ -1,22 +1,8 @@
 use crate::types::*; 
 use crate::file::delete_file;
-use chrono::{DateTime, Utc};
 use std::sync::RwLock;
 use snafu::ResultExt;
-
-struct DaemonState {
-    pub config : Config,
-    pub start_time : DateTime<Utc>
-}
-
-impl DaemonState {
-    fn new(config: &Config, start_time : &DateTime<Utc>) -> DaemonState {
-        DaemonState {
-            config : config.clone(),
-            start_time : start_time.clone()
-        }
-    }
-}
+use chrono::{DateTime, Utc};  
 
 lazy_static! {
     static ref STATE: RwLock<Option<DaemonState>> = RwLock::new(None);
@@ -45,6 +31,14 @@ pub fn stop_server() {
         *state = None;
     }
     std::process::exit(-1);
+}
+
+pub fn get_server_state() -> Result<DaemonState> {
+    let lock_state = STATE.read().map_err(
+        |err| Box::new(err) as Box<dyn std::error::Error>)
+        .context(ServerStateError {})?;
+    let state = (*lock_state).as_ref().unwrap();
+    Ok(state.clone())
 }
 
 fn set_exit_handler() -> Result<()> {
