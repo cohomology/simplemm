@@ -2,6 +2,7 @@
 extern crate log;
 
 use simplemm::types::*;
+use simplemm::state::get_server_version;
 
 use snafu::{ErrorCompat, ResultExt};
 use syslog::{Facility, Formatter3164, BasicLogger};
@@ -38,8 +39,7 @@ fn read_config<'a>() -> Result<Config> {
 }
 
 fn parse_args<'a>() -> clap::ArgMatches<'a> {
-  const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-  let matches = App::new(PROGRAM).version(VERSION).author("by Cohomology, 2020")
+  let matches = App::new(PROGRAM).version(get_server_version()).author("by Cohomology, 2020")
                              .arg(Arg::with_name("config").short("c")
                                                           .long("config")
                                                           .value_name("FILE")

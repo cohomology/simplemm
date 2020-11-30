@@ -85,11 +85,6 @@ pub enum Error {
         socket : String,
         source : std::io::Error
     },     
-    #[snafu(display("Could not read from socket {}: {}", socket, source))]
-    SocketShutdownWriteError {
-        socket : String,
-        source : std::io::Error
-    },      
     #[snafu(display("Could not close socket {}: {}", socket, source))]
     SocketCloseError {
         socket : String,
@@ -123,14 +118,16 @@ pub struct Command {
 #[derive(Clone,Serialize,Deserialize)] 
 pub struct DaemonState {
     pub config : Config,
-    pub start_time : DateTime<Utc>
+    pub start_time : DateTime<Utc>,
+    pub server_version : String
 } 
 
 impl DaemonState {
-    pub fn new(config: &Config, start_time : &DateTime<Utc>) -> DaemonState {
+    pub fn new(config: &Config, start_time : &DateTime<Utc>, server_version : &str) -> DaemonState {
         DaemonState {
             config : config.clone(),
-            start_time : start_time.clone()
+            start_time : start_time.clone(),
+            server_version : server_version.to_string()
         }
     }
 } 

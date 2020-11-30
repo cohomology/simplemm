@@ -3,7 +3,6 @@ use snafu::{ErrorCompat, ResultExt};
 use clap::{Arg,App};
 use std::fs::File;
 use std::io::Read;
-use std::os::unix::net::UnixStream; 
 
 static PROGRAM: &'static str = "simplemm client";
 static VERSION: &'static str = env!("CARGO_PKG_VERSION"); 
@@ -79,11 +78,11 @@ fn check_server_is_running(config: &Config) -> Result<(i64, DaemonState)> {
 }
 
 fn get_server_state(config: &Config) -> Result<DaemonState> {
-    send_and_read(config, Action::Alive, None)
+    simplemm::client::send_and_read(config, Action::Alive, None)
 }
 
 fn stop_daemon(config: &Config) -> Result<()> {
-    send_no_read(config, Action::Stop, None)?;
+    simplemm::client::send_no_read(config, Action::Stop, None)?;
     let state = get_server_state(config);
     if let Err(_) = state {
         println!("Server stopped successfully");
@@ -93,50 +92,6 @@ fn stop_daemon(config: &Config) -> Result<()> {
     Ok(())
 }
 
-fn send_and_read<T: for<'de> serde::de::Deserialize<'de>>(config: &Config, action: Action, data: Option<String>) -> Result<T> {
-    let stream = send(config, action, data)?;
-    let result: T = serde_json::from_reader(&stream).context(RequestParseError {})?;
-    stream.shutdown(std::net::Shutdown::Both).context(
-        SocketCloseError { 
-            socket : &config.socket
-        }
-    )?; 
-    Ok(result) 
-}
-
-fn send_no_read(config: &Config, action: Action, data: Option<String>) -> Result<()> {
-    let stream = send(config, action, data)?;
-    stream.shutdown(std::net::Shutdown::Both).context(
-        SocketCloseError { 
-            socket : &config.socket
-        }
-    )?;  
-    Ok(())
-}
-
-fn send(config: &Config, action: Action, data: Option<String>) -> Result<UnixStream> {
-    let stream = UnixStream::connect(&config.socket).context(
-        SocketConnectError {
-            socket : &config.socket
-        }
-    )?;
-    
-    let uid = users::get_current_uid();
-    let user = users::get_user_by_uid(uid).map_or("<None>".to_string(), 
-                                                  |user| user.name().to_string_lossy().to_string());
-    let command = Command {
-        action: action,
-        originator: user,
-        data: data,
-    }; 
-    serde_json::to_writer(&stream, &command).context(RequestSerializeError { })?;
-    stream.shutdown(std::net::Shutdown::Write).context(
-        SocketShutdownWriteError { 
-            socket : &config.socket
-        }
-    )?;
-    Ok(stream)
-}
 
 fn print_server_state(pid: i64, state: &DaemonState) {
     println!("Server is running, pid = {}, server_start_time: {}", pid, state.start_time);

@@ -7,3 +7,4 @@ pub mod database;
 pub mod file;
 pub mod request;
 pub mod state;
+pub mod client;

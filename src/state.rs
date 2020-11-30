@@ -8,13 +8,18 @@ lazy_static! {
     static ref STATE: RwLock<Option<DaemonState>> = RwLock::new(None);
 } 
 
+pub fn get_server_version() -> &'static str {
+    const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+    return VERSION;
+}
+
 pub fn start_server(config : &Config) -> Result<()> {
     log_start(&config);
     let now = Utc::now();
     let mut state = STATE.write().map_err(
         |err| Box::new(err) as Box<dyn std::error::Error>)
         .context(ServerStateError {})?;
-    *state = Some(DaemonState::new(config, &now));
+    *state = Some(DaemonState::new(config, &now, get_server_version()));
     set_exit_handler()?;
     Ok(())
 }
