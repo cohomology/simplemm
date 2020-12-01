@@ -14,14 +14,20 @@ pub fn stop_daemon(config: &types::Config) -> error::Result<()> {
     Ok(())
 }
 
-pub fn send_and_read<T: for<'de> serde::de::Deserialize<'de>>(config: &types::Config, action: types::Action, data: Option<String>) -> error::Result<T> {
+pub fn check_server_is_running(config: &types::Config) -> error::Result<(i64, types::DaemonState)> {
+    let pid = get_server_pid(config)?;
+    let state = get_server_state(&config)?;
+    Ok((pid, state))
+}
+
+fn send_and_read<T: for<'de> serde::de::Deserialize<'de>>(config: &types::Config, action: types::Action, data: Option<String>) -> error::Result<T> {
     let stream = send(config, action, data)?;
     let result: T = serde_json::from_reader(&stream).context(error::RequestParseError {})?;
     shutdown_socket(&stream, std::net::Shutdown::Both, config)?;
     Ok(result) 
 }
 
-pub fn send_no_read(config: &types::Config, action: types::Action, data: Option<String>) -> error::Result<()> {
+fn send_no_read(config: &types::Config, action: types::Action, data: Option<String>) -> error::Result<()> {
     let stream = send(config, action, data)?;
     shutdown_socket(&stream, std::net::Shutdown::Both, config)?;
     Ok(())
@@ -35,7 +41,7 @@ fn shutdown_socket(stream: &UnixStream, shutdown : std::net::Shutdown, config: &
     )
 }
 
-pub fn get_server_pid(config: &types::Config) -> error::Result<i64> {
+fn get_server_pid(config: &types::Config) -> error::Result<i64> {
     let mut file = std::fs::File::open(&config.pid_file).context(
         error::PidFileReadError { 
             filename : &config.pid_file
@@ -52,13 +58,7 @@ pub fn get_server_pid(config: &types::Config) -> error::Result<i64> {
     Ok(pid)
 }
 
-pub fn check_server_is_running(config: &types::Config) -> error::Result<(i64, types::DaemonState)> {
-    let pid = get_server_pid(config)?;
-    let state = get_server_state(&config)?;
-    Ok((pid, state))
-}
-
-pub fn get_server_state(config: &types::Config) -> error::Result<types::DaemonState> {
+fn get_server_state(config: &types::Config) -> error::Result<types::DaemonState> {
     send_and_read(config, types::Action::Alive, None)
 }
 

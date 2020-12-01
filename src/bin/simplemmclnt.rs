@@ -1,7 +1,7 @@
 use simplemm::{error, types, client};
 use snafu::ErrorCompat;
 
-static PROGRAM: &'static str = "simplemm client";
+static PROGRAM: &'static str = "simplemmclnt";
 static CLIENT_VERSION: &'static str = env!("CARGO_PKG_VERSION"); 
 
 fn main() {
@@ -12,22 +12,29 @@ fn main() {
 
 fn run() -> error::Result<()> {
     let (config, matches) = read_config()?;
-    let (pid, state) = client::check_server_is_running(&config)?;
     match matches.subcommand_name().unwrap() {
-        "stop" => client::stop_daemon(&config),
-        "ping" => Ok(print_server_state(pid, &state)),
-        "version" => Ok(print_client_info()),
-        _      => Ok(())
+        "stop"    => action_stop(&config),
+        "ping"    => action_ping(&config),
+        "version" => action_client_info(),
+        _         => Ok(())
     }
 }
 
-fn print_server_state(pid: i64, state: &types::DaemonState) {
-    println!("Server is running, pid = {}, server_start_time: {}", pid, state.start_time);
+fn action_stop(config: &types::Config) -> error::Result<()> {
+    let _ = client::check_server_is_running(&config)?;
+    client::stop_daemon(config)
 }
 
-fn print_client_info() {
-    println!("{}, v{}", PROGRAM, CLIENT_VERSION);
+fn action_ping(config: &types::Config) -> error::Result<()> {
+    let (pid, state) = client::check_server_is_running(&config)?;
+    println!("simplemmd v{}, pid = {}, server_start_time: {}", state.server_version, 
+        pid, state.start_time);
+    Ok(())
+}
 
+fn action_client_info() -> error::Result<()> {
+    println!("{}, v{}", PROGRAM, CLIENT_VERSION);
+    Ok(())
 }
 
 fn parse_args<'a>() -> clap::ArgMatches<'a> {
