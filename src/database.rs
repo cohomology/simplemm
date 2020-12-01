@@ -1,12 +1,8 @@
-use crate::types::Config;
-use crate::error::{Result, DbConnectionError};
-
-use diesel::mysql::MysqlConnection;
+use crate::{error, types};
 use diesel::Connection;
-
 use snafu::ResultExt; 
 
-pub fn check_database(config : &Config) -> Result<()> {
-  MysqlConnection::establish(&config.db_url).context(DbConnectionError {})?;
+pub fn check_database(config : &types::Config) -> error::Result<()> {
+  diesel::mysql::MysqlConnection::establish(&config.db_url).context(error::DbConnectionError {})?;
   Ok(())
 }

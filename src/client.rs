@@ -1,24 +1,23 @@
-use crate::types::*;
-use crate::error::*;
+use crate::{types, error};
 use std::os::unix::net::UnixStream;
 use snafu::ResultExt;
 
-pub fn send_and_read<T: for<'de> serde::de::Deserialize<'de>>(config: &Config, action: Action, data: Option<String>) -> Result<T> {
+pub fn send_and_read<T: for<'de> serde::de::Deserialize<'de>>(config: &types::Config, action: types::Action, data: Option<String>) -> error::Result<T> {
     let stream = send(config, action, data)?;
-    let result: T = serde_json::from_reader(&stream).context(RequestParseError {})?;
+    let result: T = serde_json::from_reader(&stream).context(error::RequestParseError {})?;
     shutdown_socket(&stream, std::net::Shutdown::Both, config)?;
     Ok(result) 
 }
 
-pub fn send_no_read(config: &Config, action: Action, data: Option<String>) -> Result<()> {
+pub fn send_no_read(config: &types::Config, action: types::Action, data: Option<String>) -> error::Result<()> {
     let stream = send(config, action, data)?;
     shutdown_socket(&stream, std::net::Shutdown::Both, config)?;
     Ok(())
 }
 
-fn send(config: &Config, action: Action, data: Option<String>) -> Result<UnixStream> {
+fn send(config: &types::Config, action: types::Action, data: Option<String>) -> error::Result<UnixStream> {
     let stream = UnixStream::connect(&config.socket).context(
-        SocketConnectError {
+        error::SocketConnectError {
             socket : &config.socket
         }
     )?;
@@ -26,19 +25,19 @@ fn send(config: &Config, action: Action, data: Option<String>) -> Result<UnixStr
     let uid = users::get_current_uid();
     let user = users::get_user_by_uid(uid).map_or("<None>".to_string(), 
                                                   |user| user.name().to_string_lossy().to_string());
-    let command = Command {
+    let command = types::Command {
         action: action,
         originator: user,
         data: data,
     }; 
-    serde_json::to_writer(&stream, &command).context(RequestSerializeError { })?;
+    serde_json::to_writer(&stream, &command).context(error::RequestSerializeError { })?;
     shutdown_socket(&stream, std::net::Shutdown::Write, config)?;
     Ok(stream)
 }
 
-pub fn shutdown_socket(stream: &UnixStream, shutdown : std::net::Shutdown, config: &Config) -> Result<()> {
+pub fn shutdown_socket(stream: &UnixStream, shutdown : std::net::Shutdown, config: &types::Config) -> error::Result<()> {
     stream.shutdown(shutdown).context(
-        SocketCloseError { 
+        error::SocketCloseError { 
             socket : &config.socket
         }
     )
