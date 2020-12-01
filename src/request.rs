@@ -16,14 +16,14 @@ fn signal_alive(stream: UnixStream) {
             send_signal_alive(stream, state);
         }
         Err(err) => {
-            error!("Error when getting the server state: {:?}", err);
+            log::error!("Error when getting the server state: {:?}", err);
         }
     }
 }
 
 fn send_signal_alive(stream: UnixStream, state: &DaemonState) {
     if let Err(err) = serde_json::to_writer(&stream, state) {
-        error!("Error serializing the server state: {:?}", err); 
+        log::error!("Error serializing the server state: {:?}", err); 
     }
     let _ = stream.shutdown(std::net::Shutdown::Both);
 }

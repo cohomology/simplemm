@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate log;
-
 use simplemm::types::*;
 use simplemm::state::get_server_version;
 
@@ -55,6 +52,7 @@ fn pre_daemonize_checks(config :&Config) -> Result<()> {
     simplemm::database::check_database(&config)?; 
     simplemm::file::check_working_dir(&config)?; 
     simplemm::file::check_pid_file(&config)?;
+
     Ok(())
 }
 
@@ -89,7 +87,7 @@ fn handle_requests(listener: UnixListener) {
                 thread::spawn(move || handle_client(stream));
             }
             Err(err) => {
-                error!("Error: {}", err);
+                log::error!("Error: {}", err);
                 break;
             }
         }
@@ -102,7 +100,7 @@ fn handle_client(stream: UnixStream) {
         serde_json::from_reader(reader).context(RequestParseError {});
     match command {
         Ok(command) => simplemm::request::process_request(command, stream),
-        Err(err) => warn!("Could not parse request: {:?}", err)
+        Err(err) => log::warn!("Could not parse request: {:?}", err)
     }
 }
 
@@ -121,10 +119,10 @@ fn initialize_syslog() -> Result<()> {
 }
 
 fn error_abort(error : Error) -> ! {
-    error!("Error: {}", error);
+    log::error!("Error: {}", error);
     eprintln!("Error: {}", error); 
     if let Some(backtrace) = ErrorCompat::backtrace(&error) {
-        error!("{}", backtrace);
+        log::error!("{}", backtrace);
         eprintln!("{}", backtrace);
     }
     std::process::exit(-1)

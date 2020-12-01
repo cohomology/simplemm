@@ -4,7 +4,7 @@ use std::sync::RwLock;
 use snafu::ResultExt;
 use chrono::Utc; 
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref STATE: RwLock<Option<DaemonState>> = RwLock::new(None);
 } 
 
@@ -54,9 +54,9 @@ fn set_exit_handler() -> Result<()> {
 } 
 
 fn log_start(config: &Config) {
-    info!("simplemmd started, uid = {}, gid = {}", config.uid, config.gid);
+    log::info!("simplemmd started, uid = {}, gid = {}", config.uid, config.gid);
 }
 
 fn log_end(config: &Config) {
-    info!("simplemmd stopped, uid = {}, gid = {}", config.uid, config.gid);
+    log::info!("simplemmd stopped, uid = {}, gid = {}", config.uid, config.gid);
 } 
