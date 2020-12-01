@@ -1,6 +1,5 @@
-use simplemm::{error, types};
-use std::io::Read;
-use snafu::{ErrorCompat, ResultExt};
+use simplemm::{error, types, client};
+use snafu::ErrorCompat;
 
 static PROGRAM: &'static str = "simplemm client";
 static CLIENT_VERSION: &'static str = env!("CARGO_PKG_VERSION"); 
@@ -13,21 +12,22 @@ fn main() {
 
 fn run() -> error::Result<()> {
     let (config, matches) = read_config()?;
-    let (pid, state) = check_server_is_running(&config)?;
+    let (pid, state) = client::check_server_is_running(&config)?;
     match matches.subcommand_name().unwrap() {
-        "stop" => stop_daemon(&config),
+        "stop" => client::stop_daemon(&config),
         "ping" => Ok(print_server_state(pid, &state)),
         "version" => Ok(print_client_info()),
         _      => Ok(())
     }
 }
 
-fn error_abort(error : error::Error) -> ! {
-    eprintln!("Error: {}", error); 
-    if let Some(backtrace) = ErrorCompat::backtrace(&error) {
-        eprintln!("{}", backtrace);
-    }
-    std::process::exit(-1)
+fn print_server_state(pid: i64, state: &types::DaemonState) {
+    println!("Server is running, pid = {}, server_start_time: {}", pid, state.start_time);
+}
+
+fn print_client_info() {
+    println!("{}, v{}", PROGRAM, CLIENT_VERSION);
+
 }
 
 fn parse_args<'a>() -> clap::ArgMatches<'a> {
@@ -52,50 +52,10 @@ fn read_config<'a>() -> error::Result<(types::Config, clap::ArgMatches<'a>)> {
     Ok((config, arg_matches))
 }
 
-fn check_pid_file_exists(config: &types::Config) -> error::Result<i64> {
-    let mut file = std::fs::File::open(&config.pid_file).context(
-        error::PidFileReadError { 
-            filename : &config.pid_file
-    })?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).context(
-        error::PidFileReadError {
-            filename : &config.pid_file
-    })?;
-    let pid : i64 = contents.trim().parse().context(
-        error::PidFileParseError {
-            filename : &config.pid_file
-    })?;  
-    Ok(pid)
-}
-
-fn check_server_is_running(config: &types::Config) -> error::Result<(i64, types::DaemonState)> {
-    let pid = check_pid_file_exists(config)?;
-    let state = get_server_state(&config)?;
-    Ok((pid, state))
-}
-
-fn get_server_state(config: &types::Config) -> error::Result<types::DaemonState> {
-    simplemm::client::send_and_read(config, types::Action::Alive, None)
-}
-
-fn stop_daemon(config: &types::Config) -> error::Result<()> {
-    simplemm::client::send_no_read(config, types::Action::Stop, None)?;
-    let state = get_server_state(config);
-    if let Err(_) = state {
-        println!("Server stopped successfully");
-    } else {
-        println!("Could not stop server");
+fn error_abort(error : error::Error) -> ! {
+    eprintln!("Error: {}", error); 
+    if let Some(backtrace) = ErrorCompat::backtrace(&error) {
+        eprintln!("{}", backtrace);
     }
-    Ok(())
-}
-
-
-fn print_server_state(pid: i64, state: &types::DaemonState) {
-    println!("Server is running, pid = {}, server_start_time: {}", pid, state.start_time);
-}
-
-fn print_client_info() {
-    println!("{}, v{}", PROGRAM, CLIENT_VERSION);
-
+    std::process::exit(-1)
 }
