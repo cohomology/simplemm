@@ -1,6 +1,5 @@
 use serde::{Serialize, Deserialize};
 use snafu::Snafu;
-use chrono::{DateTime, Utc}; 
 
 #[derive(Debug,Snafu)]
 #[snafu(visibility(pub))]
@@ -118,12 +117,12 @@ pub struct Command {
 #[derive(Clone,Serialize,Deserialize)] 
 pub struct DaemonState {
     pub config : Config,
-    pub start_time : DateTime<Utc>,
+    pub start_time : chrono::DateTime<chrono::Utc>,
     pub server_version : String
 } 
 
 impl DaemonState {
-    pub fn new(config: &Config, start_time : &DateTime<Utc>, server_version : &str) -> DaemonState {
+    pub fn new(config: &Config, start_time : &chrono::DateTime<chrono::Utc>, server_version : &str) -> DaemonState {
         DaemonState {
             config : config.clone(),
             start_time : start_time.clone(),

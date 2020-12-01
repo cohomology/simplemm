@@ -1,11 +1,9 @@
 use crate::types::*; 
-use crate::file::delete_file;
-use std::sync::RwLock;
+use crate::file;
 use snafu::ResultExt;
-use chrono::Utc; 
 
 lazy_static::lazy_static! {
-    static ref STATE: RwLock<Option<DaemonState>> = RwLock::new(None);
+    static ref STATE: std::sync::RwLock<Option<DaemonState>> = std::sync::RwLock::new(None);
 } 
 
 pub fn get_server_version() -> &'static str {
@@ -15,7 +13,7 @@ pub fn get_server_version() -> &'static str {
 
 pub fn start_server(config : &Config) -> Result<()> {
     log_start(&config);
-    let now = Utc::now();
+    let now = chrono::Utc::now();
     let mut state = STATE.write().map_err(
         |err| Box::new(err) as Box<dyn std::error::Error>)
         .context(ServerStateError {})?;
@@ -29,8 +27,8 @@ pub fn stop_server() {
     if let Ok(mut state) = state {
         if let Some(ref state) = *state {
             let config = state.config.clone();
-            delete_file(&config.socket);
-            delete_file(&config.pid_file); 
+            file::delete_file(&config.socket);
+            file::delete_file(&config.pid_file); 
             log_end(&config);
         }
         *state = None;

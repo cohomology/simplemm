@@ -1,7 +1,5 @@
 use simplemm::types::*;
 use snafu::{ErrorCompat, ResultExt};
-use clap::{Arg,App};
-use std::fs::File;
 use std::io::Read;
 
 static PROGRAM: &'static str = "simplemm client";
@@ -33,9 +31,9 @@ fn error_abort(error : Error) -> ! {
 }
 
 fn parse_args<'a>() -> clap::ArgMatches<'a> {
-    let app = App::new(PROGRAM).version(VERSION).author("by Cohomology, 2020")
+    let app = clap::App::new(PROGRAM).version(VERSION).author("by Cohomology, 2020")
         .setting(clap::AppSettings::SubcommandRequiredElseHelp)
-        .arg(Arg::with_name("config").short("c")
+        .arg(clap::Arg::with_name("config").short("c")
              .long("config")
              .value_name("FILE")
              .help("configuration file")
@@ -55,7 +53,7 @@ fn read_config<'a>() -> Result<(Config, clap::ArgMatches<'a>)> {
 }
 
 fn check_pid_file_exists(config: &Config) -> Result<i64> {
-    let mut file = File::open(&config.pid_file).context(
+    let mut file = std::fs::File::open(&config.pid_file).context(
         PidFileReadError { 
             filename : &config.pid_file
     })?;

@@ -1,17 +1,9 @@
 use simplemm::types::*;
-use simplemm::state::get_server_version;
+use simplemm::state;
 
 use snafu::{ErrorCompat, ResultExt};
-use syslog::{Facility, Formatter3164, BasicLogger};
-use log::LevelFilter;
-use daemonize::Daemonize;
-use std::thread;
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::path::Path;
-use std::io::BufReader;
-use std::fs;
 use std::os::unix::fs::PermissionsExt;
-use clap::{Arg,App};
 
 static PROGRAM: &str = "simplemmd daemon";
 
@@ -38,8 +30,8 @@ fn read_config<'a>() -> Result<Config> {
 }
 
 fn parse_args<'a>() -> clap::ArgMatches<'a> {
-  let matches = App::new(PROGRAM).version(get_server_version()).author("by Cohomology, 2020")
-                             .arg(Arg::with_name("config").short("c")
+  let matches = clap::App::new(PROGRAM).version(state::get_server_version()).author("by Cohomology, 2020")
+                             .arg(clap::Arg::with_name("config").short("c")
                                                           .long("config")
                                                           .value_name("FILE")
                                                           .help("configuration file")
@@ -57,7 +49,7 @@ fn pre_daemonize_checks(config :&Config) -> Result<()> {
 }
 
 fn daemonize(config : &Config) -> Result<()> {
-     let daemonize = Daemonize::new()
+     let daemonize = daemonize::Daemonize::new()
         .pid_file(&config.pid_file) 
         .chown_pid_file(true)      
         .working_directory(&config.working_dir)
@@ -71,7 +63,7 @@ fn daemonize(config : &Config) -> Result<()> {
 }
 
 fn bind_to_socket(config : &Config) -> Result<UnixListener> {
-    let path = Path::new(&config.socket);
+    let path = std::path::Path::new(&config.socket);
     let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).context(SocketBindError { 
             path : path.to_string_lossy().to_string() 
@@ -84,7 +76,7 @@ fn handle_requests(listener: UnixListener) {
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                thread::spawn(move || handle_client(stream));
+                std::thread::spawn(move || handle_client(stream));
             }
             Err(err) => {
                 log::error!("Error: {}", err);
@@ -95,7 +87,7 @@ fn handle_requests(listener: UnixListener) {
 }
 
 fn handle_client(stream: UnixStream) {
-    let reader = BufReader::new(&stream);
+    let reader = std::io::BufReader::new(&stream);
     let command: Result<Command> = 
         serde_json::from_reader(reader).context(RequestParseError {});
     match command {
@@ -105,16 +97,16 @@ fn handle_client(stream: UnixStream) {
 }
 
 fn initialize_syslog() -> Result<()> {
-    let formatter = Formatter3164 {
-        facility: Facility::LOG_USER,
+    let formatter = syslog::Formatter3164 {
+        facility: syslog::Facility::LOG_USER,
         hostname: None,
         process: "simplemmd".into(),
         pid: 0,
     };
 
     let logger = syslog::unix(formatter).context(SyslogError {})?;
-    log::set_boxed_logger(Box::new(BasicLogger::new(logger)))
-        .map(|()| log::set_max_level(LevelFilter::Info)).context(SetLoggerError {})?;
+    log::set_boxed_logger(Box::new(syslog::BasicLogger::new(logger)))
+        .map(|()| log::set_max_level(log::LevelFilter::Info)).context(SetLoggerError {})?;
     Ok(())
 }
 
@@ -129,6 +121,6 @@ fn error_abort(error : Error) -> ! {
 }
 
 fn set_socket_permissions(socket : &str) -> Result<()> {
-    fs::set_permissions(socket, fs::Permissions::from_mode(0o777))
+    std::fs::set_permissions(socket, std::fs::Permissions::from_mode(0o777))
          .context(SocketPermissionError { socket })
 }
