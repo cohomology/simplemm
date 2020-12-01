@@ -1,8 +1,11 @@
-use snafu::ResultExt;
+use crate::types::Config;
+use crate::error::{Result, FileOpenError, TomlParsingError};
 
-use crate::types::{Config, Result, FileOpenError, TomlParsingError};
 use std::fs::File;
 use std::io::{BufReader,Read};
+
+use snafu::ResultExt;
+
 
 pub fn read_config(filename: &str) -> Result<Config> {
   let file = File::open(filename).context(FileOpenError { filename })?;

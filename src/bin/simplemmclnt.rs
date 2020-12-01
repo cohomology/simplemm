@@ -1,3 +1,4 @@
+use simplemm::error::*;
 use simplemm::types::*;
 use snafu::{ErrorCompat, ResultExt};
 use std::io::Read;

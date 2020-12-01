@@ -1,3 +1,4 @@
+use simplemm::error::*;
 use simplemm::types::*;
 use simplemm::state;
 

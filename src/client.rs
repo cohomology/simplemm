@@ -1,4 +1,5 @@
 use crate::types::*;
+use crate::error::*;
 use std::os::unix::net::UnixStream;
 use snafu::ResultExt;
 

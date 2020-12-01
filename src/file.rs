@@ -1,4 +1,5 @@
 use crate::types::*; 
+use crate::error::*;
 use std::path::{Path, PathBuf};
 use faccess::{AccessMode, PathExt};
 use snafu::ResultExt;

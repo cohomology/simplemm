@@ -1,3 +1,4 @@
+use crate::error::*;
 use crate::types::*; 
 use crate::file;
 use snafu::ResultExt;
