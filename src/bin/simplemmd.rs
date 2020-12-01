@@ -12,6 +12,8 @@ use std::thread;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
 use std::io::BufReader;
+use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use clap::{Arg,App};
 
 static PROGRAM: &str = "simplemmd daemon";
@@ -129,8 +131,6 @@ fn error_abort(error : Error) -> ! {
 }
 
 fn set_socket_permissions(socket : &str) -> Result<()> {
-     // Fixme: seems to be the only working way to change the socket permissions
-     std::process::Command::new("/usr/bin/env").arg("chmod").arg("777").arg(socket).output()
-         .context(SocketPermissionError { socket })?;
-     Ok(())
+    fs::set_permissions(socket, fs::Permissions::from_mode(0o777))
+         .context(SocketPermissionError { socket })
 }
