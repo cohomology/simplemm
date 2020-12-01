@@ -33,7 +33,7 @@ fn action_ping(config: &types::Config) -> error::Result<()> {
 }
 
 fn action_client_info() -> error::Result<()> {
-    println!("{}, v{}", PROGRAM, CLIENT_VERSION);
+    println!("{} v{}", PROGRAM, CLIENT_VERSION);
     Ok(())
 }
 
