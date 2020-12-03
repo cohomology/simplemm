@@ -20,17 +20,17 @@ pub fn check_server_is_running(config: &types::Config) -> error::Result<(i64, ty
     Ok((pid, state))
 }
 
-fn send_and_read<T: for<'de> serde::de::Deserialize<'de>>(config: &types::Config, 
-                                                          action: types::Action, 
-                                                          list_name: Option<String>,
-                                                          data: Option<String>) -> error::Result<T> {
+pub fn send_and_read<T: for<'de> serde::de::Deserialize<'de>>(config: &types::Config, 
+                                                              action: types::Action, 
+                                                              list_name: Option<String>,
+                                                              data: Option<String>) -> error::Result<T> {
     let stream = send(config, action, list_name, data)?;
     let result: T = serde_json::from_reader(&stream).context(error::RequestParseError {})?;
     shutdown_socket(&stream, std::net::Shutdown::Both, config)?;
     Ok(result) 
 }
 
-fn send_no_read(config: &types::Config, action: types::Action, list_name: Option<String>, data: Option<String>) -> error::Result<()> {
+pub fn send_no_read(config: &types::Config, action: types::Action, list_name: Option<String>, data: Option<String>) -> error::Result<()> {
     let stream = send(config, action, list_name, data)?;
     shutdown_socket(&stream, std::net::Shutdown::Both, config)?;
     Ok(())

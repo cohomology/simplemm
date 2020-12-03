@@ -1,5 +1,6 @@
 use simplemm::{error, types, client};
-use snafu::ErrorCompat;
+use snafu::{ErrorCompat, ResultExt};
+use std::io::{Read};
 
 static PROGRAM: &'static str = "simplemmclnt";
 static CLIENT_VERSION: &'static str = env!("CARGO_PKG_VERSION"); 
@@ -16,7 +17,7 @@ fn run() -> error::Result<()> {
         "stop"      => action_stop(&config),
         "ping"      => action_ping(&config),
         "version"   => action_client_info(),
-        "subscribe" => action_subscribe(&matches),        
+        "subscribe" => action_subscribe(&config, &matches),        
         _         => Ok(())
     }
 }
@@ -38,10 +39,13 @@ fn action_client_info() -> error::Result<()> {
     Ok(())
 }
 
-fn action_subscribe(matches: &clap::ArgMatches) -> error::Result<()> {
+fn action_subscribe(config: &types::Config, matches: &clap::ArgMatches) -> error::Result<()> {
     let mailing_list = matches.subcommand_matches("subscribe")
                               .unwrap().value_of("list_name").unwrap();
-    println!("{:?}", mailing_list); 
+    let mut email_content = String::new();
+    std::io::stdin().read_to_string(&mut email_content).context(error::ReadStdinError {})?;   
+    client::check_server_is_running(config)?;
+    client::send_and_read(config, types::Action::Subscribe, mailing_list, email_content)?;
     Ok(())
 }
 

@@ -13,7 +13,8 @@ pub struct Config {
 #[derive(Serialize,Deserialize)]
 pub enum Action {
     Stop,
-    Alive
+    Alive,
+    Subscribe
 }
 
 #[derive(Serialize,Deserialize)]

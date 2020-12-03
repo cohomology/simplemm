@@ -87,6 +87,10 @@ pub enum Error {
     SocketCloseError {
         socket : String,
         source : std::io::Error
+    },   
+    #[snafu(display("Could not read data from stdin: {}", source))]
+    ReadStdinError {
+        source : std::io::Error
     },       
 }
  
