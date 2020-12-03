@@ -27,8 +27,8 @@ fn action_stop(config: &types::Config) -> error::Result<()> {
 
 fn action_ping(config: &types::Config) -> error::Result<()> {
     let (pid, state) = client::check_server_is_running(&config)?;
-    println!("simplemmd v{}, pid = {}, server_start_time: {}", state.server_version, 
-        pid, state.start_time);
+    println!("simplemmd v{}, pid = {}, server_start_time: {}, uid = {}, gid = {}", state.server_version, 
+        pid, state.start_time, state.config.uid, state.config.gid);
     Ok(())
 }
 
