@@ -44,8 +44,7 @@ fn action_subscribe(config: &types::Config, matches: &clap::ArgMatches) -> error
                               .unwrap().value_of("list_name").unwrap();
     let mut email_content = String::new();
     std::io::stdin().read_to_string(&mut email_content).context(error::ReadStdinError {})?;   
-    client::check_server_is_running(config)?;
-    client::send_and_read(config, types::Action::Subscribe, mailing_list, email_content)?;
+    client::send_and_read(config, types::Action::Subscribe, Some(mailing_list.to_string()), Some(email_content))?;
     Ok(())
 }
 

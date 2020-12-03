@@ -4,7 +4,8 @@ use std::os::unix::net::UnixStream;
 pub fn process_request(command: types::Command, stream: UnixStream) {
     match command.action {
        types::Action::Stop => state::stop_server(),
-       types::Action::Alive => signal_alive(stream)
+       types::Action::Alive => signal_alive(stream),
+       types::Action::Subscribe => handle_subscribe(command),
     }
 }
 
@@ -25,4 +26,7 @@ fn send_signal_alive(stream: UnixStream, state: &types::DaemonState) {
         log::error!("Error serializing the server state: {:?}", err); 
     }
     let _ = stream.shutdown(std::net::Shutdown::Both);
+}
+
+fn handle_subscribe(_command: types::Command) {
 }
