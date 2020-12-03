@@ -20,6 +20,7 @@ pub enum Action {
 pub struct Command {
     pub action : Action,
     pub originator : String,
+    pub list_name : Option<String>,
     pub data : Option<String>,
 }
 

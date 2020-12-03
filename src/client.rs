@@ -4,7 +4,7 @@ use snafu::ResultExt;
 use std::io::Read;
 
 pub fn stop_daemon(config: &types::Config) -> error::Result<()> {
-    send_no_read(config, types::Action::Stop, None)?;
+    send_no_read(config, types::Action::Stop, None, None)?;
     let state = get_server_state(config);
     if let Err(_) = state {
         println!("Server stopped successfully");
@@ -20,15 +20,18 @@ pub fn check_server_is_running(config: &types::Config) -> error::Result<(i64, ty
     Ok((pid, state))
 }
 
-fn send_and_read<T: for<'de> serde::de::Deserialize<'de>>(config: &types::Config, action: types::Action, data: Option<String>) -> error::Result<T> {
-    let stream = send(config, action, data)?;
+fn send_and_read<T: for<'de> serde::de::Deserialize<'de>>(config: &types::Config, 
+                                                          action: types::Action, 
+                                                          list_name: Option<String>,
+                                                          data: Option<String>) -> error::Result<T> {
+    let stream = send(config, action, list_name, data)?;
     let result: T = serde_json::from_reader(&stream).context(error::RequestParseError {})?;
     shutdown_socket(&stream, std::net::Shutdown::Both, config)?;
     Ok(result) 
 }
 
-fn send_no_read(config: &types::Config, action: types::Action, data: Option<String>) -> error::Result<()> {
-    let stream = send(config, action, data)?;
+fn send_no_read(config: &types::Config, action: types::Action, list_name: Option<String>, data: Option<String>) -> error::Result<()> {
+    let stream = send(config, action, list_name, data)?;
     shutdown_socket(&stream, std::net::Shutdown::Both, config)?;
     Ok(())
 }
@@ -59,10 +62,10 @@ fn get_server_pid(config: &types::Config) -> error::Result<i64> {
 }
 
 fn get_server_state(config: &types::Config) -> error::Result<types::DaemonState> {
-    send_and_read(config, types::Action::Alive, None)
+    send_and_read(config, types::Action::Alive, None, None)
 }
 
-fn send(config: &types::Config, action: types::Action, data: Option<String>) -> error::Result<UnixStream> {
+fn send(config: &types::Config, action: types::Action, list_name: Option<String>, data: Option<String>) -> error::Result<UnixStream> {
     let stream = UnixStream::connect(&config.socket).context(
         error::SocketConnectError {
             socket : &config.socket
@@ -75,6 +78,7 @@ fn send(config: &types::Config, action: types::Action, data: Option<String>) -> 
     let command = types::Command {
         action: action,
         originator: user,
+        list_name: list_name,
         data: data,
     }; 
     serde_json::to_writer(&stream, &command).context(error::RequestSerializeError { })?;

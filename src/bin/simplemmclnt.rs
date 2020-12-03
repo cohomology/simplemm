@@ -13,9 +13,10 @@ fn main() {
 fn run() -> error::Result<()> {
     let (config, matches) = read_config()?;
     match matches.subcommand_name().unwrap() {
-        "stop"    => action_stop(&config),
-        "ping"    => action_ping(&config),
-        "version" => action_client_info(),
+        "stop"      => action_stop(&config),
+        "ping"      => action_ping(&config),
+        "version"   => action_client_info(),
+        "subscribe" => action_subscribe(&matches),        
         _         => Ok(())
     }
 }
@@ -37,6 +38,13 @@ fn action_client_info() -> error::Result<()> {
     Ok(())
 }
 
+fn action_subscribe(matches: &clap::ArgMatches) -> error::Result<()> {
+    let mailing_list = matches.subcommand_matches("subscribe")
+                              .unwrap().value_of("list_name").unwrap();
+    println!("{:?}", mailing_list); 
+    Ok(())
+}
+
 fn parse_args<'a>() -> clap::ArgMatches<'a> {
     let app = clap::App::new(PROGRAM).version(CLIENT_VERSION).author("by Cohomology, 2020")
         .setting(clap::AppSettings::SubcommandRequiredElseHelp)
@@ -47,7 +55,9 @@ fn parse_args<'a>() -> clap::ArgMatches<'a> {
              .takes_value(true))
         .subcommand(clap::SubCommand::with_name("stop").about("Stop simplemmd daemon"))
         .subcommand(clap::SubCommand::with_name("ping").about("Get server status"))
-        .subcommand(clap::SubCommand::with_name("version").about("Get client version")); 
+        .subcommand(clap::SubCommand::with_name("version").about("Get client version"))
+        .subcommand(clap::SubCommand::with_name("subscribe").about("Subscribe to mailing list")
+                     .arg(clap::Arg::with_name("list_name").help("Name of the mailing list").required(true))); 
     let matches = app.get_matches();
     return matches;
 }
