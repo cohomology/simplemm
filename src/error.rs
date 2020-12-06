@@ -92,6 +92,10 @@ pub enum Error {
     ReadStdinError {
         source : std::io::Error
     },       
+    #[snafu(display("Could not parse mail: {}", source))]
+    MailParseError {
+        source : mailparse::MailParseError
+    },   
 }
  
 pub type Result<T, E = Error> = std::result::Result<T, E>;

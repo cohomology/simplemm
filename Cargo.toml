@@ -9,8 +9,7 @@ faccess = "~0.2.3"
 log = "~0.4.11"
 serde = { version = "~1.0.117", features = ["derive"] }
 snafu = { version = "~0.6.9", features = ["backtraces"] }
-email-format = "~0.8.0"
-email = "~0.0.21"
+mailparse = "~0.13.1"
 syslog = "^5.0"
 daemonize = "~0.4.1"
 toml = "~0.5"
