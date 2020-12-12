@@ -1,4 +1,4 @@
-use crate::{types, state, error};
+use crate::{types, state, error, parse_mail};
 use std::os::unix::net::UnixStream;
 use snafu::ResultExt;
 
@@ -26,14 +26,39 @@ fn send_signal_alive(stream: UnixStream, state: &types::DaemonState) -> error::R
 
 fn handle_subscribe(command: types::Command) -> error::Result<()> {
     use mailparse::MailHeaderMap;
-    if let Some(ref data) = command.data {
-        let mail = mailparse::parse_mail(data.as_bytes()).context(error::MailParseError {})?;
-        let from = mail.headers.get_first_value("From");
-        log::info!("Got mail from: {:?}", from);
-        let sender = mail.headers.get_first_value("Sender");
-        log::info!("Sender: {:?}", sender);
-    } else {
-        log::warn!("Subscribe without any data");
+    let data = command.data.ok_or(error::Error::SubscriptionRequestWithoutData)?;
+    let mail = mailparse::parse_mail(data.as_bytes()).context(error::MailParseError {})?;
+    let from = mail.headers.get_first_value("From").ok_or(
+        error::Error::EmptyOrMissingHeader {
+            header : "FROM",
+            request : data.clone()
+    })?;
+    let addresses = parse_mail::get_addresses_in_from_header(&from);
+    if addresses.is_empty() {
+        return Err(error::Error::CouldNotParseHeader {
+            header: "FROM",
+            request : data.clone()
+        });
     }
+    let list_name = command.list_name.ok_or(
+        error::Error::RequestWithoutListName {
+            request_type : "SUBSCRIBE",
+            request : data.clone()
+    })?;    
+    subscribe_send_and_insert_multiple_recipients(list_name, addresses, data);  
     Ok(())
+}
+
+fn subscribe_send_and_insert_multiple_recipients(list_name: String,
+                                                 addresses: std::vec::Vec<String>,
+                                                 request: String) {
+    for address in &addresses {
+        subscribe_send_and_insert(&list_name, address, &request);
+    }
+}
+
+fn subscribe_send_and_insert(list_name: &str,
+                             address: &str,
+                             request: &str) {
+    
 }

@@ -4,6 +4,7 @@ table! {
         title -> Varchar,
         email -> Varchar,
         enabled -> Bool,
+        language -> Varchar,
     }
 }
 

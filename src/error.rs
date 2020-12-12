@@ -96,6 +96,23 @@ pub enum Error {
     MailParseError {
         source : mailparse::MailParseError
     },   
+    #[snafu(display("Subscription request without data"))]
+    SubscriptionRequestWithoutData,
+    #[snafu(display("Empty or missing {} header in request \"{:?}\"", header, request))]
+    EmptyOrMissingHeader {
+        header : &'static str,
+        request: String
+    },
+    #[snafu(display("Could not parse {} header in request \"{:?}\"", header, request))]
+    CouldNotParseHeader {
+        header : &'static str,
+        request: String
+    },
+    #[snafu(display("Request {} without list name: \"{:?}\"", request_type, request))]
+    RequestWithoutListName {
+        request_type : &'static str,
+        request: String
+    }
 }
  
 pub type Result<T, E = Error> = std::result::Result<T, E>;
