@@ -1,7 +1,6 @@
 use crate::{error, types, state};
-use mysql::prelude::Queryable;
-use snafu::ResultExt; 
-use mysql::params;
+use mysql::{params, prelude::Queryable};
+use snafu::ResultExt;
 
 pub fn check_database(config : &types::Config) -> error::Result<()> {
   let _ = mysql::Pool::new(&config.db_url).context(error::DbConnectionError {})?;
@@ -9,7 +8,7 @@ pub fn check_database(config : &types::Config) -> error::Result<()> {
 }
 
 pub fn insert_subscriptions(list_name: &str, 
-                            addresses : std::vec::Vec<String>,
+                            subscriptions : std::vec::Vec<types::Subscription>,
                             request: &str) -> error::Result<()> {
   let state = state::get_server_state()?;
   let config = state.config;

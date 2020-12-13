@@ -32,6 +32,12 @@ pub struct DaemonState {
     pub server_version : String
 } 
 
+pub struct Subscription
+{
+    pub email: String,
+    pub uuid: String,
+}
+
 impl DaemonState {
     pub fn new(config: &Config, start_time : &chrono::DateTime<chrono::Utc>, server_version : &str) -> DaemonState {
         DaemonState {

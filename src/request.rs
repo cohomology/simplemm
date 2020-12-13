@@ -44,7 +44,11 @@ fn handle_subscribe(command: types::Command) -> error::Result<()> {
         error::Error::RequestWithoutListName {
             request_type : "SUBSCRIBE",
             request : data.clone()
-    })?;    
-    database::insert_subscriptions(&list_name, addresses, &data)?;
+    })?; 
+    let subscriptions = addresses.into_iter().map(|address| types::Subscription { 
+        email: address,
+        uuid: uuid::Uuid::new_v4().to_string(),
+    }).collect();
+    database::insert_subscriptions(&list_name, subscriptions, &data)?;
     Ok(())
 }
