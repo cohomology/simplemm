@@ -1,4 +1,4 @@
-use crate::{types, state, error, parse_mail};
+use crate::{types, state, error, parse_mail, database};
 use std::os::unix::net::UnixStream;
 use snafu::ResultExt;
 
@@ -45,20 +45,6 @@ fn handle_subscribe(command: types::Command) -> error::Result<()> {
             request_type : "SUBSCRIBE",
             request : data.clone()
     })?;    
-    subscribe_send_and_insert_multiple_recipients(list_name, addresses, data);  
+    database::insert_subscriptions(&list_name, addresses, &data)?;
     Ok(())
-}
-
-fn subscribe_send_and_insert_multiple_recipients(list_name: String,
-                                                 addresses: std::vec::Vec<String>,
-                                                 request: String) {
-    for address in &addresses {
-        subscribe_send_and_insert(&list_name, address, &request);
-    }
-}
-
-fn subscribe_send_and_insert(list_name: &str,
-                             address: &str,
-                             request: &str) {
-    
 }

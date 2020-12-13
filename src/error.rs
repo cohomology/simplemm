@@ -15,7 +15,17 @@ pub enum Error {
     },
     #[snafu(display("Could not reach database: {}", source))]
     DbConnectionError {
-        source: diesel::result::ConnectionError
+        source: mysql::Error
+    },
+    #[snafu(display("Could not prepare statement \"{}\": \"{}\"", statement, source))]
+    DbPrepareError {
+        statement: &'static str,
+        source: mysql::Error
+    },
+    #[snafu(display("Could not execute statement \"{}\": \"{}\"", statement, source))]
+    DbExecuteError {
+        statement: &'static str,
+        source: mysql::Error
     },
     #[snafu(display("Could not daemonize: {}. Server already running?", source))]
     DaemonizeError {
@@ -112,7 +122,11 @@ pub enum Error {
     RequestWithoutListName {
         request_type : &'static str,
         request: String
-    }
+    },
+    #[snafu(display("Mailing list {} does not exist in the database", list_name))]
+    DbMailingListDoesNotExist {
+        list_name : String
+    },
 }
  
 pub type Result<T, E = Error> = std::result::Result<T, E>;
