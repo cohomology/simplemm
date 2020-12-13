@@ -27,6 +27,18 @@ pub enum Error {
         statement: &'static str,
         source: mysql::Error
     },
+    #[snafu(display("Could not start transaction: \"{}\"", source))]
+    DbStartTransactionError {
+        source: mysql::Error
+    },
+    #[snafu(display("Could not rollback transaction: \"{}\"", source))]
+    DbRollbackTransactionError {
+        source: mysql::Error
+    },
+    #[snafu(display("Could not commit transaction: \"{}\"", source))]
+    DbCommitTransactionError {
+        source: mysql::Error
+    },
     #[snafu(display("Could not daemonize: {}. Server already running?", source))]
     DaemonizeError {
         source: daemonize::DaemonizeError

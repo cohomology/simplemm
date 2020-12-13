@@ -49,6 +49,10 @@ fn handle_subscribe(command: types::Command) -> error::Result<()> {
         email: address,
         uuid: uuid::Uuid::new_v4().to_string(),
     }).collect();
-    database::insert_subscriptions(&list_name, subscriptions, &data)?;
+    database::insert_subscriptions(&list_name, subscriptions, &data, send_mail_for_subscription)?;
+    Ok(())
+}
+
+fn send_mail_for_subscription(_subscription: &types::Subscription) -> error::Result<()> {
     Ok(())
 }
