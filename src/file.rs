@@ -1,7 +1,7 @@
 use crate::{error, types};
-use std::path::{Path, PathBuf};
 use faccess::{AccessMode, PathExt};
 use snafu::ResultExt;
+use std::path::{Path, PathBuf};
 
 pub fn check_working_dir(config: &types::Config) -> error::Result<()> {
     let path = Path::new(&config.working_dir);
@@ -15,7 +15,7 @@ pub fn check_pid_file(config: &types::Config) -> error::Result<()> {
     Ok(())
 }
 
-pub fn delete_file(file_path : &str) {
+pub fn delete_file(file_path: &str) {
     let path = Path::new(&file_path);
     let _ = std::fs::remove_file(&path);
 }
@@ -30,7 +30,7 @@ fn check_writeable_file(path: &Path) -> error::Result<()> {
     Ok(())
 }
 
-fn check_parent_dir_writeable(path :&Path) -> error::Result<()> {
+fn check_parent_dir_writeable(path: &Path) -> error::Result<()> {
     let mut path_buf = PathBuf::new();
     path_buf.push(path);
     path_buf.pop();
@@ -38,24 +38,23 @@ fn check_parent_dir_writeable(path :&Path) -> error::Result<()> {
     Ok(())
 }
 
-fn check_is_file(path :&Path) -> error::Result<()> {
-    let metadata = std::fs::metadata(path).context(error::PathMetadataError { 
-        path : path.to_string_lossy().to_string()
+fn check_is_file(path: &Path) -> error::Result<()> {
+    let metadata = std::fs::metadata(path).context(error::PathMetadataError {
+        path: path.to_string_lossy().to_string(),
     })?;
-    if ! metadata.is_file() {
-        return Err(error::Error::PathNoFile { 
-            path : path.to_string_lossy().to_string()
+    if !metadata.is_file() {
+        return Err(error::Error::PathNoFile {
+            path: path.to_string_lossy().to_string(),
         });
     }
     Ok(())
 }
 
-fn check_writeable(path : &Path) -> error::Result<()> {
-    if ! path.access(AccessMode::READ | 
-                     AccessMode::WRITE).is_ok() {
-      return Err(error::Error::CouldNotWriteToFileOrDirectory { 
-          path : path.to_string_lossy().to_string() 
-      } ); 
+fn check_writeable(path: &Path) -> error::Result<()> {
+    if path.access(AccessMode::READ | AccessMode::WRITE).is_err() {
+        return Err(error::Error::CouldNotWriteToFileOrDirectory {
+            path: path.to_string_lossy().to_string(),
+        });
     }
     Ok(())
 }

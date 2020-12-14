@@ -1,9 +1,9 @@
-pub mod error;
-pub mod types;
+pub mod client;
 pub mod config;
 pub mod database;
+pub mod error;
 pub mod file;
+pub mod parse_mail;
 pub mod request;
 pub mod state;
-pub mod client;
-pub mod parse_mail;
+pub mod types;
